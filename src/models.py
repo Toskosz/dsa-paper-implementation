@@ -49,10 +49,16 @@ class NetworkConfig:
     bandwidth_mhz: float = 10.0
     guard_band_mhz: float = 0.25
     numerology: int = 0
-    noise_power_dbm: float = -100.0
+    noise_psd_dbm_hz: float = -174.0
+    min_prb_power_dbm: float = 0.0
     ue_speed_mps: float = 1.5
     ewma_alpha: float = 0.1
     scheduling_interval_s: float = 1.0
+
+    @property
+    def noise_per_prb_dbm(self) -> float:
+        prb_bw_hz = 15e3 * (2 ** self.numerology) * 12
+        return self.noise_psd_dbm_hz + 10 * np.log10(prb_bw_hz)
 
     @property
     def num_prbs(self) -> int:
@@ -79,7 +85,7 @@ def default_network_config() -> NetworkConfig:
             y=0.0,
             coverage_radius=300.0,
             path_loss_exponent=2.7,
-            tx_power_dbm=46.0,
+            tx_power_dbm=20.0,
             oru_type=ORUType.MACRO,
         ),
         ORU(
@@ -88,7 +94,7 @@ def default_network_config() -> NetworkConfig:
             y=0.0,
             coverage_radius=50.0,
             path_loss_exponent=2.8,
-            tx_power_dbm=30.0,
+            tx_power_dbm=10.0,
             oru_type=ORUType.MICRO,
         ),
         ORU(
@@ -97,7 +103,7 @@ def default_network_config() -> NetworkConfig:
             y=0.0,
             coverage_radius=50.0,
             path_loss_exponent=2.8,
-            tx_power_dbm=30.0,
+            tx_power_dbm=10.0,
             oru_type=ORUType.MICRO,
         ),
     ]

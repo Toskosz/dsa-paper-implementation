@@ -5,7 +5,7 @@ import numpy as np
 from src.models import ORU, UE
 
 REFERENCE_DISTANCE_M = 1.0
-PATH_LOSS_REF_DB = 30.0
+PATH_LOSS_REF_DB = 0.0
 
 
 def path_loss_db(distance_m: float, exponent: float) -> float:
