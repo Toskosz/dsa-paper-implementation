@@ -23,11 +23,11 @@ class Simulator:
     def __init__(
         self,
         numerology: int = 0,
-        phase1_steps: int = 200,
-        phase2_steps: int = 100,
-        phase3_steps: int = 100,
-        max_ues_phase1: int = 500,
-        max_ues_phase2: int = 5000,
+        phase1_steps: int = 450,
+        phase2_steps: int = 300,
+        phase3_steps: int = 150,
+        max_ues_phase1: int = 160,
+        max_ues_phase2: int = 160,
         csv_path: str = "results/simulation_log.csv",
     ):
         self.config = default_network_config()
