@@ -1,42 +1,82 @@
+"""Radio propagation and rate computation models.
+
+Provides path-loss calculation, SINR estimation (with and without noise),
+Shannon achievable rate, and EWMA throughput updates.  All formulas follow
+the paper's propagation model with a log-distance path-loss:
+
+    PL(d) = K_r + 10·α·log₁₀(d)   [dB]
+
+where K_r = 0 dB at the 1 m reference distance and α is the environment-
+dependent path-loss exponent.
+"""
+
 from __future__ import annotations
 
 import numpy as np
 
 from src.models import ORU, UE
 
+# Reference distance for the path-loss model (1 m).
 REFERENCE_DISTANCE_M = 1.0
+# Path-loss at the reference distance (0 dB — no loss at 1 m).
 PATH_LOSS_REF_DB = 0.0
 
 
 def path_loss_db(distance_m: float, exponent: float) -> float:
+    """Log-distance path-loss in dB.
+
+    PL(d) = K_r + 10·α·log₁₀(d).  Distances below the reference
+    distance (1 m) are clamped to avoid negative losses.
+
+    Args:
+        distance_m: Transmitter-receiver separation in meters.
+        exponent: Path-loss exponent α (e.g. 2.7 for Macro, 2.8 for Micro).
+
+    Returns:
+        Path loss in dB.
+    """
     if distance_m < REFERENCE_DISTANCE_M:
         distance_m = REFERENCE_DISTANCE_M
     return PATH_LOSS_REF_DB + 10 * exponent * np.log10(distance_m)
 
 
 def received_power_dbm(tx_power_dbm: float, distance_m: float, exponent: float) -> float:
+    """Received power in dBm after path-loss attenuation.
+
+    P_rx = P_tx − PL(d, α)
+    """
     return tx_power_dbm - path_loss_db(distance_m, exponent)
 
 
 def dbm_to_watts(dbm: float) -> float:
+    """Convert dBm to Watts: P(W) = 10^(dBm/10) / 1000."""
     return 10.0 ** (dbm / 10.0) / 1e3
 
 
 def db_to_linear(db: float) -> float:
+    """Convert dB to linear scale: L = 10^(dB/10)."""
     return 10.0 ** (db / 10.0)
 
 
 def linear_to_db(linear: float) -> float:
+    """Convert linear scale to dB. Returns −∞ for non-positive inputs."""
     if linear <= 0:
         return -np.inf
     return 10.0 * np.log10(linear)
 
 
 def sinr_linear(ue: UE, serving_oru: ORU, interfering_orus: list[ORU]) -> float:
+    """Signal-to-Interference Ratio (SIR) in linear scale, ignoring noise.
+
+    SIR = P_signal / Σ P_interference
+
+    Used as a quick estimate when thermal noise is negligible.
+    """
     dist_s = np.sqrt((ue.x - serving_oru.x) ** 2 + (ue.y - serving_oru.y) ** 2)
     p_signal_w = dbm_to_watts(
         received_power_dbm(serving_oru.tx_power_dbm, dist_s, serving_oru.path_loss_exponent)
     )
+    # Sum interference from all O-RUs except the serving one
     interference_w = 0.0
     for oru in interfering_orus:
         if oru.id == serving_oru.id:
@@ -55,11 +95,29 @@ def sinr_with_sharing(
     noise_power_dbm: float,
     sharing_penalty_db: float = 0.0,
 ) -> float:
+    """SINR in linear scale including thermal noise and optional sharing penalty.
+
+    SINR = P_signal / (Σ P_interference + N)
+    where N is the per-PRB thermal noise power and an optional penalty
+    can model PRB sharing degradation.
+
+    Args:
+        ue: The user equipment.
+        serving_oru: The O-RU serving this UE.
+        interfering_orus: All O-RUs in the network (including the serving one).
+        noise_power_dbm: Per-PRB thermal noise power (dBm).
+        sharing_penalty_db: Additional signal attenuation when the PRB is shared (dB).
+
+    Returns:
+        SINR as a linear ratio (not dB).
+    """
     dist_s = np.sqrt((ue.x - serving_oru.x) ** 2 + (ue.y - serving_oru.y) ** 2)
     p_signal_dbm = received_power_dbm(serving_oru.tx_power_dbm, dist_s, serving_oru.path_loss_exponent)
+    # Apply optional penalty for PRB sharing
     p_signal_dbm -= sharing_penalty_db
     p_signal_w = dbm_to_watts(p_signal_dbm)
 
+    # Aggregate inter-cell interference
     interference_w = 0.0
     for oru in interfering_orus:
         if oru.id == serving_oru.id:
@@ -74,6 +132,18 @@ def sinr_with_sharing(
 
 
 def achievable_rate_mbps(sinr_lin: float, prb_bw_khz: float) -> float:
+    """Shannon capacity on a single PRB in Mbps.
+
+    R = BW · log₂(1 + SINR)
+    where BW is the PRB bandwidth converted to Hz.
+
+    Args:
+        sinr_lin: SINR in linear scale (not dB).
+        prb_bw_khz: PRB bandwidth in kHz (depends on numerology).
+
+    Returns:
+        Achievable data rate in Mbps; 0 if SINR is non-positive.
+    """
     bw_hz = prb_bw_khz * 1e3
     if sinr_lin <= 0:
         return 0.0
@@ -81,10 +151,23 @@ def achievable_rate_mbps(sinr_lin: float, prb_bw_khz: float) -> float:
 
 
 def find_serving_oru(ue: UE, orus: list[ORU]) -> ORU:
+    """Select the best-serving O-RU based on strongest received power.
+
+    Only O-RUs whose coverage area includes the UE are considered.
+    Ties are broken by order of appearance in the list.
+
+    Args:
+        ue: The user equipment to associate.
+        orus: All candidate O-RUs.
+
+    Returns:
+        The O-RU with the highest received power at the UE's position.
+    """
     best_oru = orus[0]
     best_rx = -np.inf
     for oru in orus:
         dist = np.sqrt((ue.x - oru.x) ** 2 + (ue.y - oru.y) ** 2)
+        # Skip O-RUs whose coverage area does not include the UE
         if dist > oru.coverage_radius:
             continue
         rx = received_power_dbm(oru.tx_power_dbm, dist, oru.path_loss_exponent)
@@ -95,4 +178,10 @@ def find_serving_oru(ue: UE, orus: list[ORU]) -> ORU:
 
 
 def update_ewma(ue: UE, alpha: float = 0.1) -> None:
+    """Update the UE's EWMA throughput with the latest instantaneous rate.
+
+    R̄(t) = (1 − α)·R̄(t−1) + α·R(t)
+
+    A smaller α gives smoother (slower-responding) averages.
+    """
     ue.ewma_throughput = (1.0 - alpha) * ue.ewma_throughput + alpha * ue.instant_rate
