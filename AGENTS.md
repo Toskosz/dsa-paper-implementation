@@ -63,8 +63,14 @@ results/                 # CSV logs and PNG plots (gitignored)
 ## Network Parameters (from paper)
 
 - 3 O-RUs: 1 Macro at (0,0) radius 300m, 2 Micro at (±200,0) radius 50m
+- Per-PRB transmit power: Macro 0.1 W (20 dBm), Micro 0.01 W (10 dBm)
+- Thermal noise: -174 dBm/Hz spectral density (computed per-PRB at runtime)
+- Path-loss constant: Kr=1 (0 dB at 1m reference distance)
 - Path-loss exponents: Macro α=2.7, Micro α=2.8
+- Minimum PRB power P^min: 1 mW (0 dBm)
 - UE speed: 1.5 m/s random walk
 - UE demands: 0.5 / 1.0 / 1.5 Mbps (random)
+- UE count: 10–160 (paper default); extendable via CLI for stress testing
 - EWMA smoothing: α=0.1
-- Phase 2 scales to 5000 UEs at (0,0) for worst-case complete graph
+- xApp episodes: 900 (450 average + 300 worst + 150 best)
+- Phase 2 scales to 160 UEs at (0,0) for worst-case (paper default)

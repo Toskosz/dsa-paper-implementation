@@ -4,8 +4,8 @@ from src.interference_graph import build_conflict_graph, weighted_degrees
 
 def _make_orus():
     return [
-        ORU(id=0, x=0, y=0, coverage_radius=300, path_loss_exponent=2.7, tx_power_dbm=46, oru_type=ORUType.MACRO),
-        ORU(id=1, x=200, y=0, coverage_radius=50, path_loss_exponent=2.8, tx_power_dbm=30, oru_type=ORUType.MICRO),
+        ORU(id=0, x=0, y=0, coverage_radius=300, path_loss_exponent=2.7, tx_power_dbm=20, oru_type=ORUType.MACRO),
+        ORU(id=1, x=200, y=0, coverage_radius=50, path_loss_exponent=2.8, tx_power_dbm=10, oru_type=ORUType.MICRO),
     ]
 
 
