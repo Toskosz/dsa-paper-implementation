@@ -37,8 +37,8 @@ def _has_conflict(
     if u1.connected_oru is None or u2.connected_oru is None:
         return False
 
-    sinr_u1 = sinr_with_sharing(u1, oru_by_id[u1.connected_oru], config.orus, config.noise_power_dbm)
-    sinr_u2 = sinr_with_sharing(u2, oru_by_id[u2.connected_oru], config.orus, config.noise_power_dbm)
+    sinr_u1 = sinr_with_sharing(u1, oru_by_id[u1.connected_oru], config.orus, config.noise_per_prb_dbm)
+    sinr_u2 = sinr_with_sharing(u2, oru_by_id[u2.connected_oru], config.orus, config.noise_per_prb_dbm)
 
     rate_u1 = achievable_rate_mbps(sinr_u1, prb_bw_khz)
     rate_u2 = achievable_rate_mbps(sinr_u2, prb_bw_khz)

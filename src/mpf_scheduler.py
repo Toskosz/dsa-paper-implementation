@@ -9,7 +9,7 @@ def mpf_metric(ue: UE, prb: int, config: NetworkConfig, prb_bw_khz: float) -> fl
         return 0.0
     oru_by_id = {oru.id: oru for oru in config.orus}
     serving = oru_by_id[ue.connected_oru]
-    sinr = sinr_with_sharing(ue, serving, config.orus, config.noise_power_dbm)
+    sinr = sinr_with_sharing(ue, serving, config.orus, config.noise_per_prb_dbm)
     rate = achievable_rate_mbps(sinr, prb_bw_khz)
     if ue.ewma_throughput <= 0:
         return rate * ue.priority_weight
@@ -90,7 +90,7 @@ def mpf_schedule(
             if ue.connected_oru is not None:
                 oru_by_id = {oru.id: oru for oru in config.orus}
                 serving = oru_by_id[ue.connected_oru]
-                sinr = sinr_with_sharing(ue, serving, config.orus, config.noise_power_dbm)
+                sinr = sinr_with_sharing(ue, serving, config.orus, config.noise_per_prb_dbm)
                 ue.instant_rate = achievable_rate_mbps(sinr, prb_bw_khz)
         update_ewma(ue, config.ewma_alpha)
 
